@@ -41,8 +41,6 @@ puts GoodDog.total_number_of_dogs # => 2
 
 ### Exercises ###
 
-# 1
-
 class MyCar
   attr_accessor :color
   attr_reader :year, :model, :speed
