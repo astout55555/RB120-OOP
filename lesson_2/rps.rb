@@ -1,4 +1,4 @@
-## Initial example of framework for classes/methods based on organized nouns/verbs
+## Classes/methods based on organized nouns/verbs
 
 class Player
   attr_accessor :move, :name
@@ -25,10 +25,10 @@ class Human < Player
     loop do
       puts "Please choose rock, paper, or scissors:"
       choice = gets.chomp
-      break if ['rock', 'paper', 'scissors'].include?(choice)
+      break if Move::VALUES.include?(choice)
       puts 'Sorry, invalid choice.'
     end
-    self.move = choice
+    self.move = Move.new(choice)
   end
 end
 
@@ -38,29 +38,57 @@ class Computer < Player
   end
 
   def choose
-    self.move = ['rock', 'paper', 'scissors'].sample
+    self.move = Move.new(Move::VALUES.sample)
+  end
+end
+
+class Move
+  VALUES = ['rock', 'paper', 'scissors']
+
+  def initialize(value)
+    @value = value
+  end
+
+  def scissors?
+    @value == 'scissors'
+  end
+
+  def rock?
+    @value == 'rock'
+  end
+
+  def paper?
+    @value == 'paper'
+  end
+
+  def >(other_move)
+    (rock? && other_move.scissors?)    ||
+      (paper? && other_move.rock?)     ||
+      (scissors? && other_move.paper?)
+  end
+
+  def <(other_move)
+    (rock? && other_move.paper?)        ||
+      (paper? && other_move.scissors?)  ||
+      (scissors? && other_move.rock?)
+  end
+
+  def to_s
+    @value
   end
 end
 
 ## Unused initial class/method ideas for associated nouns/verbs
 
-class Move
-  def initialize
-    # seems like we need something to keep track of the choice...
-    # a move object can be "paper", "rock" or "scissors"
-  end
-end
+# class Rule
+#   def initialize
+#     # not sure what the "state" of a rule object should be
+#   end
+# end
 
-class Rule
-  def initialize
-    # not sure what the "state" of a rule object should be
-  end
-end
+# def compare(move1, move2)
 
-# not sure where "compare" goes yet
-def compare(move1, move2)
-
-end
+# end
 
 ## Game Orchestration Engine
 
@@ -80,23 +108,18 @@ class RPSGame
     puts 'Thanks for playing Rock, Paper, Scissors. Goodbye!'
   end
 
-  def display_winner
+  def display_moves
     puts "#{human.name} chose: #{human.move}"
     puts "#{computer.name} chose: #{computer.move}"
+  end
 
-    case human.move
-    when 'rock'
-      puts "It's a tie!" if computer.move == 'rock'
-      puts "#{human.name} won!" if computer.move == 'scissors'
-      puts "#{computer.name} won!" if computer.move == 'paper'
-    when 'paper'
-      puts "It's a tie!" if computer.move == 'paper'
-      puts "#{human.name} won!" if computer.move == 'rock'
-      puts "#{computer.name} won!" if computer.move == 'scissors'
-    when 'scissors'
-      puts "It's a tie!" if computer.move == 'scissors'
-      puts "#{human.name} won!" if computer.move == 'paper'
-      puts "#{computer.name} won!" if computer.move == 'rock'
+  def display_winner
+    if human.move > computer.move
+      puts "#{human.name} won!"
+    elsif human.move < computer.move
+      puts "#{computer.name} won!"
+    else
+      puts "It's a tie!"
     end
   end
 
@@ -109,8 +132,8 @@ class RPSGame
       puts "Sorry, must by 'y' or 'n'."
     end
 
-    return true if answer == 'y'
-    return false
+    return true if answer.downcase == 'y'
+    false
   end
 
   def play
@@ -118,6 +141,7 @@ class RPSGame
     loop do
       human.choose
       computer.choose
+      display_moves
       display_winner
       break unless play_again?
     end
