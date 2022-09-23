@@ -1,11 +1,23 @@
 ## Classes/methods based on organized nouns/verbs
 
 class Player
-  attr_accessor :move, :name, :score
+  attr_accessor :name, :score
+  attr_reader :move
 
   def initialize
     set_name
     @score = 0
+  end
+
+  def move=(choice)
+    case choice
+    when 'rock' then @move = Rock.new
+    when 'paper' then @move = Paper.new
+    when 'scissors' then @move = Scissors.new
+    when 'lizard' then @move = Lizard.new
+    when 'spock' then @move = Spock.new
+    else puts "Error! Invalid choice passed into Player#move=() as an argument."
+    end
   end
 end
 
@@ -26,10 +38,11 @@ class Human < Player
     loop do
       puts "Please choose rock, paper, scissors, lizard, or Spock:"
       choice = gets.chomp.downcase
-      break if Move::VALUES.include?(choice)
+      break if MOVE_OPTIONS.include?(choice)
       puts 'Sorry, invalid choice.'
     end
-    self.move = Move.new(choice)
+
+    self.move = choice
   end
 end
 
@@ -39,17 +52,13 @@ class Computer < Player
   end
 
   def choose
-    self.move = Move.new(Move::VALUES.sample)
+    self.move = MOVE_OPTIONS.sample
   end
 end
 
+MOVE_OPTIONS = ['rock', 'paper', 'scissors', 'lizard', 'spock']
+
 class Move
-  VALUES = ['rock', 'paper', 'scissors', 'lizard', 'spock']
-
-  def initialize(value)
-    @value = value
-  end
-
   def scissors?
     @value == 'scissors'
   end
@@ -70,34 +79,78 @@ class Move
     @value == 'spock'
   end
 
-  def >(other_move)
-    (rock? && other_move.scissors?)   ||
-    (rock? && other_move.lizard?)     ||
-    (paper? && other_move.rock?)      ||
-    (paper? && other_move.spock?)     ||
-    (scissors? && other_move.paper?)  ||
-    (scissors? && other_move.lizard?) ||
-    (lizard? && other_move.paper?)    ||
-    (lizard? && other_move.spock?)    ||
-    (spock? && other_move.scissors?)  ||
-    (spock? && other_move.rock?)
+  def to_s
+    @value
+  end
+end
+
+class Rock < Move
+  def initialize
+    @value = 'rock'
   end
 
   def <(other_move)
-    (rock? && other_move.paper?)      ||
-    (rock? && other_move.spock?)      ||
-    (paper? && other_move.scissors?)  ||
-    (paper? && other_move.lizard?)    ||
-    (scissors? && other_move.rock?)   ||
-    (scissors? && other_move.spock?)  ||
-    (lizard? && other_move.scissors?) ||
-    (lizard? && other_move.rock?)     ||
-    (spock? && other_move.paper?)     ||
-    (spock? && other_move.lizard?)
+    other_move.paper? || other_move.spock?
   end
 
-  def to_s
-    @value
+  def >(other_move)
+    other_move.scissors? || other_move.lizard?
+  end
+end
+
+class Paper < Move
+  def initialize
+    @value = 'paper'
+  end
+
+  def <(other_move)
+    other_move.scissors? || other_move.lizard?
+  end
+
+  def >(other_move)
+    other_move.spock? || other_move.rock?
+  end
+end
+
+class Scissors < Move
+  def initialize
+    @value = 'scissors'
+  end
+
+  def <(other_move)
+    other_move.rock? || other_move.spock?
+  end
+
+  def >(other_move)
+    other_move.paper? || other_move.lizard?
+  end
+end
+
+class Lizard < Move
+  def initialize
+    @value = 'lizard'
+  end
+
+  def <(other_move)
+    other_move.scissors? || other_move.rock?
+  end
+
+  def >(other_move)
+    other_move.paper? || other_move.spock?
+  end
+end
+
+class Spock < Move
+  def initialize
+    @value = 'spock'
+  end
+
+  def <(other_move)
+    other_move.paper? || other_move.lizard?
+  end
+
+  def >(other_move)
+    other_move.scissors? || other_move.rock?
   end
 end
 
@@ -177,6 +230,11 @@ class RPSGame
     false
   end
 
+  def reset_game
+    human.score = 0
+    computer.score = 0
+  end
+
   def play
     display_welcome_message
     loop do
@@ -189,6 +247,7 @@ class RPSGame
         break if match_over?
       end
       break unless play_again?
+      reset_game
     end
     display_goodbye_message
   end
