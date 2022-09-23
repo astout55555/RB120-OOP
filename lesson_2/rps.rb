@@ -19,8 +19,6 @@ class Player
     when 'spock' then @move = Spock.new
     else puts "Error! Invalid choice passed into Player#move=() as an argument."
     end
-
-    @move_history << choice
   end
 end
 
@@ -51,38 +49,42 @@ end
 
 class Computer < Player
   INTRO_ADJ = ['illustrious', 'relentless', 'merciless', 'devious', 'squeaky']
-  
+
   def set_name
-    self.name = RPSGame.remaining_computers.sample
+    self.name = CURRENT_GAME.remaining_computers.sample
   end
 
   def r2d2_choose
-    if move_history.size < 3 || rand(10) < 7
-      self.move = 'scissors'
-    elsif rand(10) == 7
-      self.move = 'spock'
-    else
-      self.move = 'paper'
-    end
+    self.move = if move_history.empty? || rand(10) < 7
+                  'scissors'
+                else
+                  'paper'
+                end
   end
 
   def hal_choose
-    self.move = Move::VALUES.sample
+    self.move = if ['rock', 'scissors'].include?(CURRENT_GAME.human.move.value)
+                  'spock'
+                else
+                  ['scissors', 'scissors', 'lizard'].sample
+                end
   end
 
   def chappie_choose
-    self.move = ['spock', 'lizard'].sample
-  end
-
-  def sonny_choose
     self.move = 'rock'
   end
 
+  def sonny_choose
+    self.move = ['scissors', 'spock'].sample
+  end
+
   def number_5_choose
-    if ((move_history.size + 1) % 5) == 0
-      self.move = 'paper'
-    else
-      self.move = 'scissors'
+    self.move = ['paper', 'lizard'].sample
+
+    return unless ((move_history.size + 1) % 5) == 0
+
+    until move > CURRENT_GAME.human.move
+      self.move = Move::VALUES.sample
     end
   end
 
@@ -99,6 +101,8 @@ class Computer < Player
 end
 
 class Move
+  attr_reader :value
+
   VALUES = ['rock', 'paper', 'scissors', 'lizard', 'spock']
 
   def scissors?
@@ -199,74 +203,109 @@ end
 ## Game Orchestration Engine
 
 class RPSGame
-  attr_accessor :human, :computer
+  attr_accessor :human, :computer, :remaining_computers
 
-  @@remaining_computers = ['R2D2', 'Hal', 'Chappie', 'Sonny', 'Number 5']
+  POINTS_TO_WIN = 5
 
   def initialize
     @human = Human.new
-    @computer = Computer.new
-  end
-
-  def self.remaining_computers
-    @@remaining_computers
+    @remaining_computers = ['R2D2', 'Hal', 'Chappie', 'Sonny', 'Number 5']
+    display_welcome_message
   end
 
   def display_welcome_message
-    puts "Welcome to Rock, Paper, Scissors, Lizard, Spock!"
-    puts "Get ready, #{human.name}. First to 10 points wins the match!"
+    puts "Thank goodness you're here, #{human.name}. It's a disaster!"
+    puts "E-topia has been overrun bremaining_computers.size} evil AIs!"
+    puts "You must fight them using Rock, Paper, Scissors, Lizard, Spock!"
+    puts "First to #{RPSGame::POINTS_TO_WIN} points wins the round. Hurry!"
   end
 
   def display_goodbye_message
-    puts 'Thanks for playing Rock, Paper, Scissors, Lizard, Spock. Goodbye!'
+    if full_game_won?
+      puts "Holy cow, #{human.name}, you defeated every computer!"
+      puts "You saved E-topia! You're welcome back anytime, hero :)"
+    else
+      puts "Thanks for playing RPSLS!"
+      puts "Come back when you're ready to take on the computer menace!"
+    end
   end
 
   def display_moves
     puts '------------'
     puts "#{human.name} chose: #{human.move}"
     puts "#{computer.name} chose: #{computer.move}"
+  end
 
+  def dislpay_move_history
     puts "#{human.name}'s move history: #{human.move_history}"
     puts "#{computer.name}'s move history: #{computer.move_history}"
   end
 
+  def human_won_round?
+    human.move > computer.move
+  end
+
+  def human_won_match?
+    human.score >= RPSGame::POINTS_TO_WIN
+  end
+
+  def computer_won_round?
+    human.move < computer.move
+  end
+
+  def computer_won_match?
+    computer.score >= RPSGame::POINTS_TO_WIN
+  end
+
   def display_winner
-    if human.move > computer.move
+    if human_won_round?
       puts "#{human.name} won!"
-      human.score += 1
-    elsif human.move < computer.move
+    elsif computer_won_round?
       puts "#{computer.name} won!"
-      computer.score += 1
     else
       puts "It's a tie!"
     end
   end
 
-  def match_over?
-    (human.score >= 10) || (computer.score >= 10)
-  end
-
   def display_score
     puts "You have #{human.score} points."
     puts "#{computer.name} has #{computer.score} points."
+  end
 
-    if human.score >= 10
-      puts "#{human.name} triumphs over #{computer.name}!"
-      @@remaining_computers.delete("#{computer.name}")
-    elsif computer.score >= 10
-      puts "Oh no, #{human.name} has been vanquished by #{computer.name}!"
+  def display_end_of_match_message
+    if human_won_match?
+      puts "Huzzah! You defeated #{computer.name}!"
+    elsif computer_won_match?
+      puts "Oh no, #{human.name} has been crushed by #{computer.name}!"
     end
   end
 
-  def play_again?
-    if @@remaining_computers.empty?
-      puts "Holy cow, #{human.name}, you defeated every computer!"
-      return false
-    end
+  def display_end_of_round_details
+    display_moves
+    dislpay_move_history
+    display_winner
+  end
 
+  def resolve_round
+    display_end_of_round_details
+    human.score += 1 if human_won_round?
+    computer.score += 1 if computer_won_round?
+    display_score
+    display_end_of_match_message if match_over?
+  end
+
+  def match_over?
+    human_won_match? || computer_won_match?
+  end
+
+  def full_game_won?
+    remaining_computers.empty?
+  end
+
+  def play_again?
     answer = nil
     loop do
-      puts "Are you prepared to face another challenger? (y/n)"
+      puts "Are you willing to continue the fight? (y/n)"
       answer = gets.chomp.downcase
       break if ['y', 'yes', 'n', 'no'].include?(answer)
       puts "Sorry, must by 'y' or 'n'."
@@ -276,32 +315,38 @@ class RPSGame
     false
   end
 
-  def reset_game
+  def set_up_game
     human.score = 0
     human.move_history = []
-    computer.score = 0
-    computer.move_history = []
-    computer.set_name
+    self.computer = Computer.new
+    declare_opponent
   end
 
   def declare_opponent
     puts "Your opponent is the #{Computer::INTRO_ADJ.sample} #{computer.name}!"
   end
 
+  def players_throw
+    human.choose
+    human.move_history << human.move.value
+    computer.choose
+    computer.move_history << computer.move.value
+  end
+
+  def execute_round
+    players_throw
+    resolve_round
+    remaining_computers.delete(computer.name) if human_won_match?
+  end
+
   def play
-    display_welcome_message
     loop do
-      declare_opponent
+      set_up_game
       loop do
-        human.choose
-        computer.choose
-        display_moves
-        display_winner
-        display_score
+        execute_round
         break if match_over?
       end
-      break unless play_again?
-      reset_game
+      break if full_game_won? || !play_again?
     end
     display_goodbye_message
   end
@@ -309,4 +354,5 @@ end
 
 ## Game Code Execution
 
-RPSGame.new.play
+CURRENT_GAME = RPSGame.new
+CURRENT_GAME.play
