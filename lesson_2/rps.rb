@@ -55,11 +55,7 @@ class Computer < Player
   end
 
   def r2d2_choose
-    self.move = if move_history.empty? || rand(10) < 7
-                  'scissors'
-                else
-                  'paper'
-                end
+    self.move = ['paper', 'scissors'][move_history.size % 2]
   end
 
   def hal_choose
@@ -75,7 +71,7 @@ class Computer < Player
   end
 
   def sonny_choose
-    self.move = ['scissors', 'spock'].sample
+    self.move = Move::VALUES[move_history.size % 5]
   end
 
   def number_5_choose
