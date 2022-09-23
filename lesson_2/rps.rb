@@ -215,9 +215,9 @@ class RPSGame
 
   def display_welcome_message
     puts "Thank goodness you're here, #{human.name}. It's a disaster!"
-    puts "E-topia has been overrun bremaining_computers.size} evil AIs!"
+    puts "E-topia has been overrun #{remaining_computers.size} evil AIs!"
     puts "You must fight them using Rock, Paper, Scissors, Lizard, Spock!"
-    puts "First to #{RPSGame::POINTS_TO_WIN} points wins the round. Hurry!"
+    puts "First to #{RPSGame::POINTS_TO_WIN} points wins the match. Hurry!"
   end
 
   def display_goodbye_message
