@@ -1,12 +1,13 @@
 ## Classes/methods based on organized nouns/verbs
 
 class Player
-  attr_accessor :name, :score
+  attr_accessor :name, :score, :move_history
   attr_reader :move
 
   def initialize
     set_name
     @score = 0
+    @move_history = []
   end
 
   def move=(choice)
@@ -18,6 +19,8 @@ class Player
     when 'spock' then @move = Spock.new
     else puts "Error! Invalid choice passed into Player#move=() as an argument."
     end
+
+    @move_history << choice
   end
 end
 
@@ -38,7 +41,7 @@ class Human < Player
     loop do
       puts "Please choose rock, paper, scissors, lizard, or Spock:"
       choice = gets.chomp.downcase
-      break if MOVE_OPTIONS.include?(choice)
+      break if Move::VALUES.include?(choice)
       puts 'Sorry, invalid choice.'
     end
 
@@ -52,13 +55,13 @@ class Computer < Player
   end
 
   def choose
-    self.move = MOVE_OPTIONS.sample
+    self.move = Move::VALUES.sample
   end
 end
 
-MOVE_OPTIONS = ['rock', 'paper', 'scissors', 'lizard', 'spock']
-
 class Move
+  VALUES = ['rock', 'paper', 'scissors', 'lizard', 'spock']
+
   def scissors?
     @value == 'scissors'
   end
@@ -154,18 +157,6 @@ class Spock < Move
   end
 end
 
-## Unused initial class/method ideas for associated nouns/verbs
-
-# class Rule
-#   def initialize
-#     # not sure what the "state" of a rule object should be
-#   end
-# end
-
-# def compare(move1, move2)
-
-# end
-
 ## Game Orchestration Engine
 
 class RPSGame
@@ -188,6 +179,9 @@ class RPSGame
     puts '------------'
     puts "#{human.name} chose: #{human.move}"
     puts "#{computer.name} chose: #{computer.move}"
+
+    puts "#{human.name}'s move history: #{human.move_history}"
+    puts "#{computer.name}'s move history: #{computer.move_history}"
   end
 
   def display_winner
@@ -232,7 +226,9 @@ class RPSGame
 
   def reset_game
     human.score = 0
+    human.move_history = []
     computer.score = 0
+    computer.move_history = []
   end
 
   def play
