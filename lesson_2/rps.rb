@@ -50,12 +50,51 @@ class Human < Player
 end
 
 class Computer < Player
+  INTRO_ADJ = ['illustrious', 'relentless', 'merciless', 'devious', 'squeaky']
+  
   def set_name
-    self.name = ['R2D2', 'Hal', 'Chappie', 'Sonny', 'Number 5'].sample
+    self.name = RPSGame.remaining_computers.sample
+  end
+
+  def r2d2_choose
+    if move_history.size < 3 || rand(10) < 7
+      self.move = 'scissors'
+    elsif rand(10) == 7
+      self.move = 'spock'
+    else
+      self.move = 'paper'
+    end
+  end
+
+  def hal_choose
+    self.move = Move::VALUES.sample
+  end
+
+  def chappie_choose
+    self.move = ['spock', 'lizard'].sample
+  end
+
+  def sonny_choose
+    self.move = 'rock'
+  end
+
+  def number_5_choose
+    if ((move_history.size + 1) % 5) == 0
+      self.move = 'paper'
+    else
+      self.move = 'scissors'
+    end
   end
 
   def choose
-    self.move = Move::VALUES.sample
+    case name
+    when 'R2D2' then r2d2_choose
+    when 'Hal' then hal_choose
+    when 'Chappie' then chappie_choose
+    when 'Sonny' then sonny_choose
+    when 'Number 5' then number_5_choose
+    else puts "Error! Somehow computer did not get a valid name."
+    end
   end
 end
 
@@ -162,13 +201,20 @@ end
 class RPSGame
   attr_accessor :human, :computer
 
+  @@remaining_computers = ['R2D2', 'Hal', 'Chappie', 'Sonny', 'Number 5']
+
   def initialize
     @human = Human.new
     @computer = Computer.new
   end
 
+  def self.remaining_computers
+    @@remaining_computers
+  end
+
   def display_welcome_message
-    puts "Welcome to Rock, Paper, Scissors, Lizard, Spock, #{human.name}!"
+    puts "Welcome to Rock, Paper, Scissors, Lizard, Spock!"
+    puts "Get ready, #{human.name}. First to 10 points wins the match!"
   end
 
   def display_goodbye_message
@@ -197,7 +243,7 @@ class RPSGame
   end
 
   def match_over?
-    ((human.score >= 10) || (computer.score >= 10))
+    (human.score >= 10) || (computer.score >= 10)
   end
 
   def display_score
@@ -206,21 +252,27 @@ class RPSGame
 
     if human.score >= 10
       puts "#{human.name} triumphs over #{computer.name}!"
+      @@remaining_computers.delete("#{computer.name}")
     elsif computer.score >= 10
       puts "Oh no, #{human.name} has been vanquished by #{computer.name}!"
     end
   end
 
   def play_again?
+    if @@remaining_computers.empty?
+      puts "Holy cow, #{human.name}, you defeated every computer!"
+      return false
+    end
+
     answer = nil
     loop do
-      puts "Would you like to play again? (y/n)"
-      answer = gets.chomp
-      break if ['y', 'n'].include? answer.downcase
+      puts "Are you prepared to face another challenger? (y/n)"
+      answer = gets.chomp.downcase
+      break if ['y', 'yes', 'n', 'no'].include?(answer)
       puts "Sorry, must by 'y' or 'n'."
     end
 
-    return true if answer.downcase == 'y'
+    return true if answer == 'y' || answer == 'yes'
     false
   end
 
@@ -229,11 +281,17 @@ class RPSGame
     human.move_history = []
     computer.score = 0
     computer.move_history = []
+    computer.set_name
+  end
+
+  def declare_opponent
+    puts "Your opponent is the #{Computer::INTRO_ADJ.sample} #{computer.name}!"
   end
 
   def play
     display_welcome_message
     loop do
+      declare_opponent
       loop do
         human.choose
         computer.choose
