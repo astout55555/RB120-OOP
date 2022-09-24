@@ -1,10 +1,12 @@
 ## Classes/methods based on organized nouns/verbs
 
 class Player
-  attr_accessor :name, :score, :move_history
-  attr_reader :move
+  attr_accessor :score, :move_history
+  attr_reader :move, :name
 
   private
+
+  attr_writer :name
 
   def initialize
     set_name
@@ -19,22 +21,25 @@ class Player
     when 'scissors' then @move = Scissors.new
     when 'lizard' then @move = Lizard.new
     when 'spock' then @move = Spock.new
-    else puts "Error! Invalid choice passed into Player#move=() as an argument."
     end
   end
 end
 
 class Human < Player
   def choose
-    choice = nil
     loop do
-      puts "Please choose rock, paper, scissors, lizard, or Spock:"
-      choice = gets.chomp.downcase
-      break if Move::VALUES.include?(choice)
-      puts 'Sorry, invalid choice.'
+      puts "Choose rock (r), paper (p), scissors (s), lizard (l), or Spock (S):"
+      choice = gets.chomp
+      if Move::OPTIONS.keys.include?(choice.to_sym)
+        self.move = Move::OPTIONS[choice.to_sym]
+        break
+      elsif Move::OPTIONS.values.include?(choice.downcase)
+        self.move = choice
+        break
+      else
+        puts 'Sorry, invalid choice.' # only abbreviations are case-sensitive
+      end      
     end
-
-    self.move = choice
   end
 
   private
@@ -61,7 +66,6 @@ class Computer < Player
     when 'Chappie' then chappie_choose
     when 'Sonny' then sonny_choose
     when 'Number 5' then number_5_choose
-    else puts "Error! Somehow computer did not get a valid name."
     end
   end
 
@@ -84,7 +88,7 @@ class Computer < Player
   end
 
   def sonny_choose
-    self.move = Move::VALUES[move_history.size % 5]
+    self.move = Move::OPTIONS.values[move_history.size % 5]
   end
 
   def number_5_choose
@@ -93,7 +97,7 @@ class Computer < Player
     return unless ((move_history.size + 1) % 5) == 0
 
     until move > CURRENT_GAME.human.move
-      self.move = Move::VALUES.sample
+      self.move = Move::OPTIONS.values.sample
     end
   end
 
@@ -103,9 +107,15 @@ class Computer < Player
 end
 
 class Move
-  attr_reader :value
+  OPTIONS = {
+    r: 'rock',
+    p: 'paper',
+    s: 'scissors',
+    l: 'lizard',
+    S: 'spock'
+  }
 
-  VALUES = ['rock', 'paper', 'scissors', 'lizard', 'spock']
+  attr_reader :value
 
   def scissors?
     @value == 'scissors'
@@ -256,6 +266,8 @@ end
 ## Game Orchestration Engine
 
 class RPSGame
+  attr_reader :remaining_computers, :human, :computer
+
   def play
     loop do
       set_up_game
@@ -267,8 +279,6 @@ class RPSGame
     end
     display_goodbye_message
   end
-
-  attr_reader :remaining_computers, :human, :computer
 
   private
 
