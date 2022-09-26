@@ -29,20 +29,27 @@ class Human < Player
   def choose
     loop do
       puts "Choose rock (r), paper (p), scissors (s), lizard (l), or Spock (S):"
-      choice = gets.chomp
-      if Move::OPTIONS.keys.include?(choice.to_sym)
-        self.move = Move::OPTIONS[choice.to_sym]
-        break
-      elsif Move::OPTIONS.values.include?(choice.downcase)
-        self.move = choice
-        break
-      else
-        puts 'Sorry, invalid choice.' # only abbreviations are case-sensitive
-      end      
+      choice = gets.chomp # only abbreviations are case-sensitive
+      self.move = choice.downcase if valid_option?(choice)
+      self.move = Move::OPTIONS[choice.to_sym] if valid_abbreviation?(choice)
+      break if valid_choice?(choice)
+      puts 'Sorry, invalid choice.'
     end
   end
 
   private
+
+  def valid_abbreviation?(choice)
+    Move::OPTIONS.keys.include?(choice.to_sym)
+  end
+
+  def valid_option?(choice)
+    Move::OPTIONS.values.include?(choice.downcase)
+  end
+
+  def valid_choice?(choice)
+    valid_abbreviation?(choice) || valid_option?(choice)
+  end
 
   def set_name
     n = ''
@@ -192,18 +199,18 @@ class Spock < Move
   end
 end
 
-## Module to store various display messages, consolidate RPSGame class definition
+## Module to store display messages, consolidate RPSGame class definition
 
 module Displayable
   def display_welcome_message
     system('clear')
 
-    welcome = <<~output
+    welcome = <<~OUTPUT
       Thank goodness you're here, #{human.name}. It's a disaster!
       E-topia has been overrun #{remaining_computers.size} evil AIs!
       You must fight them using Rock, Paper, Scissors, Lizard, Spock!
       First to #{RPSGame::POINTS_TO_WIN} points wins the match. Hurry!
-    output
+    OUTPUT
 
     puts welcome
   end
@@ -304,7 +311,7 @@ class RPSGame
   end
 
   def computer_won_round?
-    computer.move > human.move 
+    computer.move > human.move
   end
 
   def computer_won_match?
