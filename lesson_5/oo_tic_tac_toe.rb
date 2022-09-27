@@ -1,19 +1,23 @@
+require 'pry-byebug'
+
 class Board
   WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
                   [[1, 4, 7], [2, 5, 8], [3, 6, 9]] + # cols
                   [[1, 5, 9], [3, 5, 7]]              # diagonals
+
+  attr_reader :squares
 
   def initialize
     @squares = {}
     reset
   end
 
-  def []=(num, marker)
-    @squares[num].marker = marker
+  def []=(key, marker)
+    squares[key].marker = marker
   end
 
   def unmarked_keys
-    @squares.keys.select { |key| @squares[key].unmarked? }
+    squares.keys.select { |key| squares[key].unmarked? }
   end
 
   def full?
@@ -26,40 +30,46 @@ class Board
 
   def winning_marker
     WINNING_LINES.each do |line|
-      squares = @squares.values_at(*line)
-      if three_identical_markers?(squares)
-        return squares.first.marker
+      line_squares = squares.values_at(*line)
+      if three_identical_markers?(line_squares)
+        return line_squares.first.marker
       end
     end
     nil
   end
 
   def reset
-    (1..9).each { |key| @squares[key] = Square.new }
+    (1..9).each { |num| squares[num] = Square.new(num) }
   end
 
   # rubocop:disable Metrics/AbcSize
   # rubocop:disable Metrics/MethodLength
   def draw
     puts "     |     |"
-    puts "  #{@squares[1]}  |  #{@squares[2]}  |  #{@squares[3]}"
+    puts "  #{squares[1]}  |  #{squares[2]}  |  #{squares[3]}"
     puts "     |     |"
     puts "-----+-----+-----"
     puts "     |     |"
-    puts "  #{@squares[4]}  |  #{@squares[5]}  |  #{@squares[6]}"
+    puts "  #{squares[4]}  |  #{squares[5]}  |  #{squares[6]}"
     puts "     |     |"
     puts "-----+-----+-----"
     puts "     |     |"
-    puts "  #{@squares[7]}  |  #{@squares[8]}  |  #{@squares[9]}"
+    puts "  #{squares[7]}  |  #{squares[8]}  |  #{squares[9]}"
     puts "     |     |"
   end
   # rubocop:enable Metrics/AbcSize
   # rubocop:enable Metrics/MethodLength
 
+  def two_in_a_row?(line_squares)
+    markers = line_squares.select(&:marked?).collect(&:marker)
+    return false if markers.size != 2
+    markers.min == markers.max
+  end
+
   private
 
-  def three_identical_markers?(squares)
-    markers = squares.select(&:marked?).collect(&:marker)
+  def three_identical_markers?(line_squares)
+    markers = line_squares.select(&:marked?).collect(&:marker)
     return false if markers.size != 3
     markers.min == markers.max
   end
@@ -70,7 +80,10 @@ class Square
 
   attr_accessor :marker
 
-  def initialize(marker=INITIAL_MARKER)
+  attr_reader :position
+
+  def initialize(position, marker=INITIAL_MARKER)
+    @position = position
     @marker = marker
   end
 
@@ -93,6 +106,26 @@ class Player
   def initialize(marker)
     @marker = marker
     @score = 0
+  end
+end
+
+class Computer < Player
+  DIFFICULTY_RATINGS = {
+    'easy' => 1,
+    'medium' => 2,
+    'hard' => 3,
+    'demonic' => 4
+  }
+
+  attr_reader :difficulty
+
+  def initialize(marker, difficulty: 'hard')
+    super(marker)
+    @difficulty = DIFFICULTY_RATINGS[difficulty]
+  end
+
+  def difficulty=(new_difficulty)
+    @difficulty = DIFFICULTY_RATINGS[new_difficulty]
   end
 end
 
@@ -183,13 +216,14 @@ class TTTGame
   def initialize
     @board = Board.new
     @human = Player.new(HUMAN_MARKER)
-    @computer = Player.new(COMPUTER_MARKER)
+    @computer = Computer.new(COMPUTER_MARKER)
     @current_marker = FIRST_TO_MOVE
   end
 
   def play
     clear
     display_welcome_message
+    choose_difficulty
     loop do
       main_game
       break unless play_again?
@@ -212,6 +246,19 @@ class TTTGame
     end
 
     display_end_of_match_message
+  end
+
+  def choose_difficulty
+    answer = nil
+    loop do
+      puts "How tough do you want your opponent to be?"
+      puts "Choose: #{joinor(Computer::DIFFICULTY_RATINGS.keys)}"
+      answer = gets.chomp.downcase
+      break if Computer::DIFFICULTY_RATINGS.keys.include?(answer)
+      puts "Sorry, please choose one of the listed difficulty options."
+    end
+
+    computer.difficulty = answer
   end
 
   def resolve_round
@@ -265,7 +312,37 @@ class TTTGame
   end
 
   def computer_moves
-    board[board.unmarked_keys.sample] = computer.marker
+    move = nil
+
+    while move.nil?
+      move = find_final_square_position(mode: 'offense') if computer.difficulty > 3
+      break unless move.nil?
+
+      move = find_final_square_position(mode: 'defense') if computer.difficulty > 2
+      break unless move.nil?
+
+      move = (5 if board.squares[5].unmarked?) if computer.difficulty > 1
+      break unless move.nil?
+
+      move = board.unmarked_keys.sample
+    end
+
+    board[move] = computer.marker
+  end
+
+  def find_final_square_position(mode: 'defense')
+    Board::WINNING_LINES.each do |line|
+      line_squares = board.squares.values_at(*line)
+      next unless board.two_in_a_row?(line_squares)
+      marked_squares = line_squares.select(&:marked?)
+      final_square_position = line_squares.select(&:unmarked?).first.position
+      if mode == 'offense' && marked_squares.first.marker == computer.marker
+        return final_square_position
+      elsif mode == 'defense' && marked_squares.first.marker == human.marker
+        return final_square_position
+      end
+    end
+    nil
   end
 
   def current_player_moves
@@ -300,6 +377,7 @@ class TTTGame
     round_reset
     human.score = 0
     computer.score = 0
+    choose_difficulty
   end
 end
 
