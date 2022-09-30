@@ -217,6 +217,29 @@ class Human < Player
     end
     @marker = character
   end
+
+  def picking_first?
+    answer = nil
+    loop do
+      puts "Do you want to pick who goes first? (y/n)"
+      answer = gets.chomp.strip.downcase
+      break if %w(y yes n no).include?(answer)
+      puts "I didn't understand you. Please enter 'y' or 'n'."
+    end
+
+    answer == 'y' || answer == 'yes'
+  end
+
+  def choose_first_to_move
+    to_go_first = nil
+    loop do
+      puts "Okay, choose who goes first. Human (h) or computer (c)."
+      to_go_first = gets.chomp.strip.downcase
+      break if %w(human h computer c).include?(to_go_first)
+      puts "Umm, what? Please just say 'human' or 'computer'--or 'h' or 'c'."
+    end
+    to_go_first
+  end
 end
 
 class Computer < Player
@@ -241,7 +264,7 @@ class Computer < Player
   def initialize
     super
     @marker = 'O'
-    give_difficulty_choice
+    determine_difficulty
   end
 
   def set_name
@@ -252,14 +275,16 @@ class Computer < Player
     @difficulty = DIFFICULTY_RATINGS[difficulty_label]
   end
 
-  def give_difficulty_choice
+  def determine_difficulty
     puts "Do you want to pick the difficulty? (y/n)"
     answer = gets.chomp.strip.downcase
     if answer == 'y' || answer == 'yes'
       prompt_for_difficulty
     else
-      puts "You're not all that excited to pick, huh? Don't worry, I'll do it."
-      self.difficulty = DIFFICULTY_RATINGS.keys.sample
+      puts "You're not all that excited to pick, huh? Hmm."
+      choice = DIFFICULTY_RATINGS.keys.sample
+      self.difficulty = choice
+      puts "Okay, I'll just set it to...#{choice}, why not?"
     end
   end
 
@@ -277,9 +302,13 @@ class Computer < Player
   end
 
   def choose_first_to_move
-    return 'computer' if difficulty > 2
-    return ['h', 'c'].sample if difficulty == 2
-    'human'
+    if difficulty > 2
+      'computer'
+    elsif difficulty == 2
+      ['h', 'c'].sample
+    else
+      'human'
+    end
   end
 end
 
@@ -295,7 +324,7 @@ class TTTGame
     @human = Human.new
     @computer = Computer.new
     computer.marker = 'X' if %(o O 0).include?(human.marker)
-    determine_first_to_move
+    @first_to_move = determine_first_to_move
     @current_marker = @first_to_move
   end
 
@@ -315,36 +344,14 @@ class TTTGame
   include Displayable
 
   def determine_first_to_move
-    if human_picking_first?
-      to_go_first = nil
-      loop do
-        puts "Okay, choose who goes first. Human (h) or computer (c)."
-        to_go_first = gets.chomp.strip.downcase
-        break if %(human h computer c).include?(to_go_first)
-        puts "Umm, what? Please just say 'human' or 'computer'--or 'h' or 'c'."
-      end
-    else
-      puts "I guess we'll let the computer pick who goes first then."
-      to_go_first = computer.choose_first_to_move
-    end
-
-    @first_to_move = if to_go_first == 'h' || to_go_first == 'human'
-                       human.marker
-                     else
-                       computer.marker
-                     end
-  end
-
-  def human_picking_first?
-    answer = nil
-    loop do
-      puts "Do you want to pick who goes first? (y/n)"
-      answer = gets.chomp.strip.downcase
-      break if %w(y yes n no).include?(answer)
-      puts "I didn't understand you. Please enter 'y' or 'n'."
-    end
-
-    answer == 'y' || answer == 'yes'
+    to_go_first = if human.picking_first?
+                    human.choose_first_to_move
+                  else
+                    puts "I guess we'll let the computer pick instead."
+                    computer.choose_first_to_move
+                  end
+    return human.marker if to_go_first == 'h' || to_go_first == 'human'
+    computer.marker
   end
 
   def main_game
@@ -409,22 +416,22 @@ class TTTGame
   end
 
   def computer_moves
-    move = nil
-
-    while move.nil?
-      move = find_final_square_position(mode: 'offense') if computer.difficulty > 3
-      break unless move.nil?
-
-      move = find_final_square_position(mode: 'defense') if computer.difficulty > 2
-      break unless move.nil?
-
-      move = (5 if board.squares[5].unmarked?) if computer.difficulty > 1
-      break unless move.nil?
-
-      move = board.unmarked_keys.sample
-    end
+    move = computer_decides_move
 
     board[move] = computer.marker
+  end
+
+  def computer_decides_move(tactics_available=computer.difficulty)
+    tactics_available.downto(1) do |tactics|
+      move = case tactics
+             when 4 then find_final_square_position(mode: 'offense')
+             when 3 then find_final_square_position(mode: 'defense')
+             when 2 then (5 if board.squares[5].unmarked?)
+             when 1 then board.unmarked_keys.sample
+             end
+
+      return move unless move.nil?
+    end
   end
 
   def find_final_square_position(mode: 'defense')
@@ -432,14 +439,20 @@ class TTTGame
       line_squares = board.squares.values_at(*line)
       next unless board.two_in_a_row?(line_squares)
       marked_squares = line_squares.select(&:marked?)
-      final_square_position = line_squares.select(&:unmarked?).first.position
-      if mode == 'offense' && marked_squares.first.marker == computer.marker
-        return final_square_position
-      elsif mode == 'defense' && marked_squares.first.marker == human.marker
-        return final_square_position
-      end
+      final_sq = line_squares.select(&:unmarked?).first
+
+      return final_sq.position if correct_move_for_mode?(mode, marked_squares)
     end
+
     nil
+  end
+
+  def correct_move_for_mode?(mode, marked_squares)
+    if mode == 'offense'
+      marked_squares.first.marker == computer.marker
+    elsif mode == 'defense'
+      marked_squares.first.marker == human.marker
+    end
   end
 
   def current_player_moves
@@ -473,11 +486,11 @@ class TTTGame
   def game_reset
     clear
     display_play_again_message
+    human.score = 0
     @computer = Computer.new
-    determine_first_to_move
+    @first_to_move = determine_first_to_move
     pause_prompt
     round_reset
-    human.score = 0
   end
 end
 
