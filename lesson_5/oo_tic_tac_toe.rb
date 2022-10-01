@@ -58,7 +58,7 @@ module Displayable
   def display_board
     puts "You're a #{human.marker}. #{computer.name} is a #{computer.marker}."
     puts ''
-    puts "#{board.draw}"
+    board.draw
     puts ''
   end
 
@@ -206,18 +206,14 @@ class Player
   attr_accessor :score
   attr_reader :name, :marker
 
-  def initialize
+  def initialize(human_marker=nil)
     @score = 0
     set_name
+    choose_marker(human_marker)
   end
 end
 
 class Human < Player
-  def initialize
-    super
-    choose_marker
-  end
-
   def picking_first?
     answer = nil
     loop do
@@ -254,15 +250,14 @@ class Human < Player
     @name = answer
   end
 
-  def choose_marker
-    character = nil
+  def choose_marker(marker_input)
     loop do
       puts "What would you like to use as your marker? Enter any character."
-      character = gets.chomp.strip
-      break if character.length == 1
+      marker_input = gets.chomp.strip
+      break if marker_input.length == 1
       puts "Sorry, choose a single character (and not an empty space)."
     end
-    @marker = character
+    @marker = marker_input
   end
 end
 
@@ -280,8 +275,6 @@ class Computer < Player
   }
 
   attr_reader :difficulty
-
-  attr_writer :marker
 
   def difficulty=(difficulty_label)
     @difficulty = DIFFICULTY_RATINGS[difficulty_label]
@@ -302,6 +295,14 @@ class Computer < Player
   def set_name
     @name = COMPUTER_NAMES[0].sample + COMPUTER_NAMES[1].sample
   end
+
+  def choose_marker(human_marker)
+    @marker = if %(o O 0).include?(human_marker)
+                'X'
+              else
+                'O'
+              end
+  end
 end
 
 ## Orchestration Engine
@@ -312,9 +313,8 @@ class TTTGame
     display_welcome_message
     @board = Board.new
     @human = Human.new
-    @computer = Computer.new
+    @computer = Computer.new(human.marker)
     determine_difficulty
-    set_computer_marker
     @first_to_move = determine_first_to_move
     @current_marker = @first_to_move
   end
@@ -335,14 +335,6 @@ class TTTGame
   include Displayable
 
   attr_reader :board, :human, :computer
-
-  def set_computer_marker
-    computer.marker = if %(o O 0).include?(human.marker)
-                        'X'
-                      else
-                        'O'
-                      end
-  end
 
   def determine_difficulty
     loop do
@@ -519,9 +511,8 @@ class TTTGame
     clear
     display_play_again_message
     human.score = 0
-    @computer = Computer.new
+    @computer = Computer.new(human.marker)
     determine_difficulty
-    set_computer_marker
     @first_to_move = determine_first_to_move
     pause_prompt
     round_reset
