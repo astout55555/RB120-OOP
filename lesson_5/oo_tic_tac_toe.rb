@@ -1,18 +1,18 @@
 # to store display methods which would otherwise clog up the TTTGame class
 module Displayable
-  def display_end_of_match_message
-    if human.score >= 5
-      puts "(to the crowd) #{human.name} has achieved victory!! *wild applause*"
-      puts "Hey, nice job out there. You made me proud."
+  def joinor(array, separator_string = ', ', final_separator = 'or')
+    if array.size > 2
+      final_element = array.pop
+      mostly_joined = array.join(separator_string)
+      "#{mostly_joined}#{separator_string}#{final_separator} #{final_element}"
     else
-      puts "#{human.name} has been defeated! #{computer.name} is the champion!"
-      puts "Better luck next time!"
+      array.join(" #{final_separator} ")
     end
   end
 
-  def display_scores
-    puts "#{human.name} has: #{human.score} points."
-    puts "#{computer.name} has: #{computer.score} points."
+  def list_valid_moves
+    valid_moves = board.unmarked_keys
+    joinor(valid_moves)
   end
 
   def display_welcome_message
@@ -20,13 +20,14 @@ module Displayable
     puts ""
   end
 
-  def display_goodbye_message
-    puts "Thanks for playing Tic Tac Toe! Goodbye!"
+  def pause_prompt
+    puts "Hit enter to continue."
+    gets
   end
 
-  def display_play_again_message
-    puts "Okay, let's play again! I'll set you up with a new computer opponent."
-    puts ""
+  def display_scores
+    puts "#{human.name} has: #{human.score} points."
+    puts "#{computer.name} has: #{computer.score} points."
   end
 
   def display_result
@@ -46,6 +47,10 @@ module Displayable
     display_board
   end
 
+  def clear
+    system "clear"
+  end
+
   def display_board
     puts "You're a #{human.marker}. #{computer.name} is a #{computer.marker}."
     puts ""
@@ -53,28 +58,23 @@ module Displayable
     puts ""
   end
 
-  def joinor(array, separator_string = ', ', final_separator = 'or')
-    if array.size > 2
-      final_element = array.pop
-      mostly_joined = array.join(separator_string)
-      "#{mostly_joined}#{separator_string}#{final_separator} #{final_element}"
+  def display_end_of_match_message
+    if human.score >= 5
+      puts "(to the crowd) #{human.name} has achieved victory!! *wild applause*"
+      puts "Hey, nice job out there. You made me proud."
     else
-      array.join(" #{final_separator} ")
+      puts "#{human.name} has been defeated! #{computer.name} is the champion!"
+      puts "Better luck next time!"
     end
   end
 
-  def list_valid_moves
-    valid_moves = board.unmarked_keys
-    joinor(valid_moves)
+  def display_play_again_message
+    puts "Okay, let's play again! I'll set you up with a new computer opponent."
+    puts ""
   end
 
-  def clear
-    system "clear"
-  end
-
-  def pause_prompt
-    puts "Hit enter to continue."
-    gets
+  def display_goodbye_message
+    puts "Thanks for playing Tic Tac Toe! Goodbye!"
   end
 end
 
