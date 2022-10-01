@@ -17,7 +17,7 @@ module Displayable
 
   def display_welcome_message
     puts "Welcome to Tic Tac Toe!"
-    puts ""
+    puts ''
   end
 
   def pause_prompt
@@ -26,8 +26,12 @@ module Displayable
   end
 
   def display_scores
-    puts "#{human.name} has: #{human.score} points."
-    puts "#{computer.name} has: #{computer.score} points."
+    scores = <<~SCORES
+      #{human.name} has: #{human.score} points.
+      #{computer.name} has: #{computer.score} points.
+    SCORES
+
+    puts scores
   end
 
   def display_result
@@ -53,24 +57,44 @@ module Displayable
 
   def display_board
     puts "You're a #{human.marker}. #{computer.name} is a #{computer.marker}."
-    puts ""
-    board.draw
-    puts ""
+    puts ''
+    puts "#{board.draw}"
+    puts ''
   end
 
   def display_end_of_match_message
-    if human.score >= 5
-      puts "(to the crowd) #{human.name} has achieved victory!! *wild applause*"
-      puts "Hey, nice job out there. You made me proud."
-    else
-      puts "#{human.name} has been defeated! #{computer.name} is the champion!"
-      puts "Better luck next time!"
-    end
+    puts(
+      if human.score >= 5
+        victory_message
+      else
+        loss_message
+      end
+    )
+  end
+
+  def victory_message
+    <<~MSG
+      --------------
+      (to the crowd) #{human.name} has achieved victory!!
+      *wild applause*
+      (to you) Hey, nice job out there. You made me proud.
+    MSG
+  end
+
+  def loss_message
+    <<~MSG
+      --------------
+      (to the crowd) #{human.name} has been defeated!
+      *loud gasp*
+      #{computer.name} is the champion!
+      *boos, hissing*
+      (to you) Better luck next time! I'm rootin' for ya!
+    MSG
   end
 
   def display_play_again_message
     puts "Okay, let's play again! I'll set you up with a new computer opponent."
-    puts ""
+    puts ''
   end
 
   def display_goodbye_message
@@ -79,6 +103,10 @@ module Displayable
 end
 
 class Board
+  WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
+                  [[1, 4, 7], [2, 5, 8], [3, 6, 9]] + # cols
+                  [[1, 5, 9], [3, 5, 7]]              # diagonals
+
   attr_reader :squares
 
   def initialize
@@ -141,10 +169,6 @@ class Board
   end
 
   private
-
-  WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
-                  [[1, 4, 7], [2, 5, 8], [3, 6, 9]] + # cols
-                  [[1, 5, 9], [3, 5, 7]]              # diagonals
 
   def three_identical_markers?(line_squares)
     markers = line_squares.select(&:marked?).collect(&:marker)
@@ -243,6 +267,11 @@ class Human < Player
 end
 
 class Computer < Player
+  COMPUTER_NAMES = [
+    ['R1', 'R2', 'R3', 'R4'],
+    ['D4', 'D6', 'D8', 'D12', 'D20']
+  ]
+
   DIFFICULTY_RATINGS = {
     'easy' => 1,
     'medium' => 2,
@@ -253,11 +282,6 @@ class Computer < Player
   attr_reader :difficulty
 
   attr_writer :marker
-
-  def initialize
-    super
-    determine_difficulty
-  end
 
   def difficulty=(difficulty_label)
     @difficulty = DIFFICULTY_RATINGS[difficulty_label]
@@ -275,41 +299,8 @@ class Computer < Player
 
   private
 
-  include Displayable
-
-  COMPUTER_NAMES = [
-    ['R1', 'R2', 'R3', 'R4'],
-    ['D4', 'D6', 'D8', 'D12', 'D20']
-  ]
-
   def set_name
     @name = COMPUTER_NAMES[0].sample + COMPUTER_NAMES[1].sample
-  end
-
-  def determine_difficulty
-    puts "Do you want to pick the difficulty? (y/n)"
-    answer = gets.chomp.strip.downcase
-    if answer == 'y' || answer == 'yes'
-      prompt_for_difficulty
-    else
-      puts "You're not all that excited to pick, huh? Hmm."
-      choice = DIFFICULTY_RATINGS.keys.sample
-      self.difficulty = choice
-      puts "Okay, I'll just set it to...#{choice}, why not?"
-    end
-  end
-
-  def prompt_for_difficulty
-    answer = nil
-    loop do
-      puts "How tough do you want your opponent to be?"
-      puts "Choose: #{joinor(DIFFICULTY_RATINGS.keys)}"
-      answer = gets.chomp.downcase
-      break if DIFFICULTY_RATINGS.keys.include?(answer)
-      puts "Sorry, please choose one of the listed difficulty options."
-    end
-
-    self.difficulty = answer
   end
 end
 
@@ -322,6 +313,7 @@ class TTTGame
     @board = Board.new
     @human = Human.new
     @computer = Computer.new
+    determine_difficulty
     set_computer_marker
     @first_to_move = determine_first_to_move
     @current_marker = @first_to_move
@@ -350,6 +342,37 @@ class TTTGame
                       else
                         'O'
                       end
+  end
+
+  def determine_difficulty
+    loop do
+      puts "Do you want to pick the difficulty? (y/n)"
+      answer = gets.chomp.strip.downcase
+      ask_for_difficulty if answer == 'y' || answer == 'yes'
+      randomly_set_difficulty if answer == 'n' || answer == 'no'
+      break if %w(y yes n no).include?(answer)
+      puts "Sorry, I didn't understand you."
+    end
+  end
+
+  def ask_for_difficulty
+    answer = nil
+    loop do
+      puts "How tough do you want your opponent to be?"
+      puts "Choose: #{joinor(Computer::DIFFICULTY_RATINGS.keys)}"
+      answer = gets.chomp.downcase
+      break if Computer::DIFFICULTY_RATINGS.keys.include?(answer)
+      puts "Sorry, please choose one of the listed difficulty options."
+    end
+
+    computer.difficulty = answer
+  end
+
+  def randomly_set_difficulty
+    puts "You don't want to pick? Hmm."
+    choice = Computer::DIFFICULTY_RATINGS.keys.sample
+    computer.difficulty = choice
+    puts "Okay, I'll just set it to...#{choice}, why not?"
   end
 
   def determine_first_to_move
@@ -497,6 +520,7 @@ class TTTGame
     display_play_again_message
     human.score = 0
     @computer = Computer.new
+    determine_difficulty
     set_computer_marker
     @first_to_move = determine_first_to_move
     pause_prompt
