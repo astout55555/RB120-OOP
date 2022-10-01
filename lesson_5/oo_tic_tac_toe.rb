@@ -1,5 +1,3 @@
-require 'pry-byebug'
-
 # to store display methods which would otherwise clog up the TTTGame class
 module Displayable
   def display_end_of_match_message
@@ -81,10 +79,6 @@ module Displayable
 end
 
 class Board
-  WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
-                  [[1, 4, 7], [2, 5, 8], [3, 6, 9]] + # cols
-                  [[1, 5, 9], [3, 5, 7]]              # diagonals
-
   attr_reader :squares
 
   def initialize
@@ -148,6 +142,10 @@ class Board
 
   private
 
+  WINNING_LINES = [[1, 2, 3], [4, 5, 6], [7, 8, 9]] + # rows
+                  [[1, 4, 7], [2, 5, 8], [3, 6, 9]] + # cols
+                  [[1, 5, 9], [3, 5, 7]]              # diagonals
+
   def three_identical_markers?(line_squares)
     markers = line_squares.select(&:marked?).collect(&:marker)
     return false if markers.size != 3
@@ -196,28 +194,6 @@ class Human < Player
     choose_marker
   end
 
-  def set_name
-    answer = nil
-    loop do
-      puts "What's your name, stranger?"
-      answer = gets.chomp.strip
-      break if answer != ''
-      puts "Sorry, I didn't catch that. You have a name, right?"
-    end
-    @name = answer
-  end
-
-  def choose_marker
-    character = nil
-    loop do
-      puts "What would you like to use as your marker? Enter any character."
-      character = gets.chomp.strip
-      break if character.length == 1
-      puts "Sorry, choose a single character (and not an empty space)."
-    end
-    @marker = character
-  end
-
   def picking_first?
     answer = nil
     loop do
@@ -240,11 +216,33 @@ class Human < Player
     end
     to_go_first
   end
+
+  private
+
+  def set_name
+    answer = nil
+    loop do
+      puts "What's your name, stranger?"
+      answer = gets.chomp.strip
+      break if answer != ''
+      puts "Sorry, I didn't catch that. You have a name, right?"
+    end
+    @name = answer
+  end
+
+  def choose_marker
+    character = nil
+    loop do
+      puts "What would you like to use as your marker? Enter any character."
+      character = gets.chomp.strip
+      break if character.length == 1
+      puts "Sorry, choose a single character (and not an empty space)."
+    end
+    @marker = character
+  end
 end
 
 class Computer < Player
-  include Displayable
-
   DIFFICULTY_RATINGS = {
     'easy' => 1,
     'medium' => 2,
@@ -252,27 +250,40 @@ class Computer < Player
     'demonic' => 4
   }
 
-  COMPUTER_NAMES = [
-    ['R1', 'R2', 'R3', 'R4'],
-    ['D4', 'D6', 'D8', 'D12', 'D20']
-  ]
-
   attr_reader :difficulty
 
   attr_writer :marker
 
   def initialize
     super
-    @marker = 'O'
     determine_difficulty
-  end
-
-  def set_name
-    @name = COMPUTER_NAMES[0].sample + COMPUTER_NAMES[1].sample
   end
 
   def difficulty=(difficulty_label)
     @difficulty = DIFFICULTY_RATINGS[difficulty_label]
+  end
+
+  def choose_first_to_move
+    if difficulty > 2
+      'computer'
+    elsif difficulty == 2
+      ['h', 'c'].sample
+    else
+      'human'
+    end
+  end
+
+  private
+
+  include Displayable
+
+  COMPUTER_NAMES = [
+    ['R1', 'R2', 'R3', 'R4'],
+    ['D4', 'D6', 'D8', 'D12', 'D20']
+  ]
+
+  def set_name
+    @name = COMPUTER_NAMES[0].sample + COMPUTER_NAMES[1].sample
   end
 
   def determine_difficulty
@@ -300,30 +311,18 @@ class Computer < Player
 
     self.difficulty = answer
   end
-
-  def choose_first_to_move
-    if difficulty > 2
-      'computer'
-    elsif difficulty == 2
-      ['h', 'c'].sample
-    else
-      'human'
-    end
-  end
 end
 
 ## Orchestration Engine
 
 class TTTGame
-  attr_reader :board, :human, :computer
-
   def initialize
     clear
     display_welcome_message
     @board = Board.new
     @human = Human.new
     @computer = Computer.new
-    computer.marker = 'X' if %(o O 0).include?(human.marker)
+    set_computer_marker
     @first_to_move = determine_first_to_move
     @current_marker = @first_to_move
   end
@@ -342,6 +341,16 @@ class TTTGame
   private
 
   include Displayable
+
+  attr_reader :board, :human, :computer
+
+  def set_computer_marker
+    computer.marker = if %(o O 0).include?(human.marker)
+                        'X'
+                      else
+                        'O'
+                      end
+  end
 
   def determine_first_to_move
     to_go_first = if human.picking_first?
@@ -365,37 +374,21 @@ class TTTGame
     display_end_of_match_message
   end
 
-  def resolve_round
-    display_result
-    award_point
-    display_scores
-    return if match_over?
-    pause_prompt
-    round_reset
-  end
-
-  def human_won?
-    board.winning_marker == human.marker
-  end
-
-  def computer_won?
-    board.winning_marker == computer.marker
-  end
-
-  def award_point
-    human.score += 1 if human_won?
-    computer.score += 1 if computer_won?
-  end
-
-  def match_over?
-    human.score >= 5 || computer.score >= 5
-  end
-
   def players_take_turns
     loop do
       current_player_moves
       break if board.someone_won? || board.full?
       clear_screen_and_display_board if human_turn?
+    end
+  end
+
+  def current_player_moves
+    if human_turn?
+      human_moves
+      @current_marker = computer.marker
+    else
+      computer_moves
+      @current_marker = human.marker
     end
   end
 
@@ -455,14 +448,36 @@ class TTTGame
     end
   end
 
-  def current_player_moves
-    if human_turn?
-      human_moves
-      @current_marker = computer.marker
-    else
-      computer_moves
-      @current_marker = human.marker
-    end
+  def resolve_round
+    display_result
+    award_point
+    display_scores
+    return if match_over?
+    pause_prompt
+    round_reset
+  end
+
+  def human_won?
+    board.winning_marker == human.marker
+  end
+
+  def computer_won?
+    board.winning_marker == computer.marker
+  end
+
+  def award_point
+    human.score += 1 if human_won?
+    computer.score += 1 if computer_won?
+  end
+
+  def match_over?
+    human.score >= 5 || computer.score >= 5
+  end
+
+  def round_reset
+    board.reset
+    @current_marker = @first_to_move
+    clear
   end
 
   def play_again?
@@ -477,17 +492,12 @@ class TTTGame
     answer == 'y' || answer == 'yes'
   end
 
-  def round_reset
-    board.reset
-    @current_marker = @first_to_move
-    clear
-  end
-
   def game_reset
     clear
     display_play_again_message
     human.score = 0
     @computer = Computer.new
+    set_computer_marker
     @first_to_move = determine_first_to_move
     pause_prompt
     round_reset
