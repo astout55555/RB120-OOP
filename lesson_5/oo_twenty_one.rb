@@ -1,4 +1,8 @@
 module Displayable
+  def clear
+    system 'clear'
+  end
+
   def display_opening_message
     opening_message = <<~OPENING
       ...The ground finally starts to level out. You're at the mountain top!
@@ -10,15 +14,10 @@ module Displayable
     puts opening_message
   end
 
-  def display_welcome_message_and_instructions
-    display_welcome_message
-    display_instructions
-  end
-
   def display_welcome_message
     welcome_message = <<~WELCOME
       --------------------------
-      Well, shucks, it's a pleasure to meet you, #{player.name}.
+      Well, shucks, it's a pleasure to meet ye, #{player.name}.
       Name's #{dealer.name}. This here's me card shack.
       Folks come from all around to play honest, old-fashioned Twenty-one.
       It's like Blackjack without all the fancy splits and such.
@@ -29,29 +28,16 @@ module Displayable
     puts welcome_message
   end
 
-  def display_instructions
-    sleep 3
-    response = nil
-    loop do
-      puts "Clear enough? (y/n)"
-      response = gets.chomp.strip.downcase
-      break if %w(y yes n no).include?(response)
-      puts "Quit yer mumblin' and answer me straight!"
-    end
-
-    display_full_instructions if %w(n no).include?(response)
-  end
-
   def display_full_instructions
     puts '---------------------'
     display_full_instructions_part_one
+    sleep 14
     puts '...'
-    sleep 10
-    puts "(The old man takes a comically large breath and continues.)"
+    puts "(The old man takes a comically large breath.)"
     puts '...'
-    sleep 2
+    sleep 3
     display_full_instructions_part_two
-    sleep 8
+    sleep 14
   end
 
   def display_full_instructions_part_one
@@ -93,6 +79,7 @@ module Displayable
 
   def display_visible_dealer_cards
     puts "Dealer's hand: #{dealer.list_visible_cards} and one face down card."
+    sleep 1
   end
 
   def display_end_of_round_message
@@ -100,7 +87,7 @@ module Displayable
     when :both_bust
       puts "We both busted? What in tarnation...luck-o-the-draw, I s'pose."
     when :dealer_wins
-      puts "YEEHAW, there's GOLD in them there cards! My gold, that is!"
+      puts "YEEHAW, there's GOLD in them there cards! MY gold, that is!"
     when :player_wins
       puts "Ah, shoot, looks like ye bested me. I'll get ye next time!"
     when :tie
@@ -176,7 +163,7 @@ class Player < Participant
   def hits_or_stays
     answer = nil
     loop do
-      puts "You wanna hit (h), or stay (s)?"
+      puts "You wanna (h)it, or (s)tay?"
       answer = gets.chomp.strip.downcase
       break if %w(hit h stay s).include?(answer)
       puts "I'm not sure I know what you mean. Which was it?"
@@ -283,10 +270,10 @@ class Game
   def initialize
     clear
     display_opening_message
-    sleep 3
     @player = Player.new
     @dealer = Dealer.new
-    display_welcome_message_and_instructions
+    display_welcome_message
+    offer_instructions
     @deck = Deck.new
   end
 
@@ -304,8 +291,16 @@ class Game
 
   include Displayable
 
-  def clear
-    system 'clear'
+  def offer_instructions
+    response = nil
+    loop do
+      puts "Clear enough? (y/n)"
+      response = gets.chomp.strip.downcase
+      break if %w(y yes n no).include?(response)
+      puts "Quit yer mumblin' and answer me straight!"
+    end
+
+    display_full_instructions if %w(n no).include?(response)
   end
 
   def transition_to_gameplay
@@ -323,6 +318,7 @@ class Game
     deal_starting_hands!
     display_known_info
     player_turn
+    sleep 2
     dealer_turn unless player.busted?
     resolve_round
   end
@@ -343,6 +339,9 @@ class Game
 
       display_known_info
     end
+
+    puts '--------------------'
+    display_player_cards_and_total if player.busted?
   end
 
   def dealer_turn
@@ -361,7 +360,9 @@ class Game
   end
 
   def resolve_round
+    puts '========================'
     reveal_hidden_dealer_card_and_total
+    puts '------------------------'
     display_end_of_round_message
   end
 
@@ -372,23 +373,27 @@ class Game
     puts "Dealer's total was: #{dealer.total}!"
   end
 
-  def determine_round_outcome ## I should figure out a way to consolidate the logic here...
-    if player.busted?
-      return :dealer_wins unless dealer.busted?
+  def determine_round_outcome
+    if double_busted?
       :both_busted
-    elsif dealer.busted?
-      return :player_wins unless player.busted?
-      :both_busted
-    elsif dealer.total < player.total
+    elsif player_won?
       :player_wins
-    elsif player.total < dealer.total
+    elsif dealer_won?
       :dealer_wins
     else
       :tie
     end
   end
 
-  def double_bust?
+  def player_won?
+    !player.busted? && (dealer.busted? || player.total > dealer.total)
+  end
+
+  def dealer_won?
+    !dealer.busted? && (player.busted? || dealer.total > player.total)
+  end
+
+  def double_busted?
     player.busted? && dealer.busted?
   end
 
@@ -404,6 +409,7 @@ class Game
   end
 
   def reset_game
+    clear
     @deck = Deck.new
     player.hand = []
     dealer.hand = []
