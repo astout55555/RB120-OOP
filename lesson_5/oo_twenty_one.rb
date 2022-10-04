@@ -1,10 +1,4 @@
-require 'pry-byebug'
-
 module Displayable
-  def clear
-    system 'clear'
-  end
-
   def display_opening_message
     opening_message = <<~OPENING
       ...The ground finally starts to level out. You're at the mountain top!
@@ -16,21 +10,29 @@ module Displayable
     puts opening_message
   end
 
+  def display_welcome_message_and_instructions
+    display_welcome_message
+    display_instructions
+  end
+
   def display_welcome_message
     welcome_message = <<~WELCOME
       --------------------------
       Well, shucks, it's a pleasure to meet you, #{player.name}.
       Name's #{dealer.name}. This here's me card shack.
       Folks come from all around to play honest, old-fashioned Twenty-one.
+      It's like Blackjack without all the fancy splits and such.
+      Just try to get as close to twenty-one as ye can without bustin'.
+      ---------------------------
     WELCOME
 
     puts welcome_message
   end
 
   def display_instructions
+    sleep 3
     response = nil
     loop do
-      display_short_instructions
       puts "Clear enough? (y/n)"
       response = gets.chomp.strip.downcase
       break if %w(y yes n no).include?(response)
@@ -38,19 +40,6 @@ module Displayable
     end
 
     display_full_instructions if %w(n no).include?(response)
-
-    display_transition_to_gameplay_message
-  end
-
-  def display_short_instructions
-    short_instructions = <<~SHORT
-      It's like Blackjack without all the fancy splits and such.
-      Just try to get as close to twenty-one as ye can without bustin'.
-      ---------------------------
-    SHORT
-
-    puts short_instructions
-    sleep 3
   end
 
   def display_full_instructions
@@ -62,6 +51,7 @@ module Displayable
     puts '...'
     sleep 2
     display_full_instructions_part_two
+    sleep 8
   end
 
   def display_full_instructions_part_one
@@ -90,18 +80,6 @@ module Displayable
     FULL_TWO
 
     puts full_instructions_part_two
-    sleep 8
-  end
-
-  def display_transition_to_gameplay_message
-    transition_message = <<~MSG
-    ---------------------
-    Alright, now have a seat and I'll deal out the cards.
-    ---------------------
-    MSG
-
-    puts transition_message
-    sleep 2
   end
 
   def display_known_info
@@ -308,12 +286,12 @@ class Game
     sleep 3
     @player = Player.new
     @dealer = Dealer.new
-    display_welcome_message
-    display_instructions
+    display_welcome_message_and_instructions
     @deck = Deck.new
   end
 
   def start
+    transition_to_gameplay
     loop do
       play_round
       break unless play_again?
@@ -325,6 +303,21 @@ class Game
   private
 
   include Displayable
+
+  def clear
+    system 'clear'
+  end
+
+  def transition_to_gameplay
+    transition_message = <<~MSG
+        ---------------------
+        Alright, now have a seat and I'll deal out the cards.
+        ---------------------
+      MSG
+
+    puts transition_message
+    sleep 2
+  end
 
   def play_round
     deal_starting_hands!
@@ -377,16 +370,19 @@ class Game
     last_dealer_card.flip!
     puts "The dealer's face down card was: #{last_dealer_card}!"
     puts "Dealer's total was: #{dealer.total}!"
-    display_end_of_round_message
   end
 
-  def determine_round_outcome
-    if double_bust?
+  def determine_round_outcome ## I should figure out a way to consolidate the logic here...
+    if player.busted?
+      return :dealer_wins unless dealer.busted?
       :both_busted
-    elsif player.busted? || (player.total < dealer.total)
-      :dealer_wins # why is it displaying the ending message twice?
-    elsif dealer.busted? || (dealer.total < player.total)
+    elsif dealer.busted?
+      return :player_wins unless player.busted?
+      :both_busted
+    elsif dealer.total < player.total
       :player_wins
+    elsif player.total < dealer.total
+      :dealer_wins
     else
       :tie
     end
