@@ -78,14 +78,17 @@ module Displayable
   end
 
   def display_visible_dealer_cards
-    puts "Dealer's hand: #{dealer.list_visible_cards} and one face down card."
+    puts "#{dealer.name}'s hand: #{dealer.list_visible_cards} + one face down."
     sleep 1
+  end
+
+  def announce_dealer_turn
+    sleep 1
+    puts "#{dealer.name}'s turn!"
   end
 
   def display_end_of_round_message
     case determine_round_outcome
-    when :both_bust
-      puts "We both busted? What in tarnation...luck-o-the-draw, I s'pose."
     when :dealer_wins
       puts "YEEHAW, there's GOLD in them there cards! MY gold, that is!"
     when :player_wins
@@ -225,20 +228,13 @@ class Deck
 end
 
 class Card
-  NUMERIC_VALUES = {
-    2 => 2, 3 => 3, 4 => 4, 5 => 5,
-    6 => 6, 7 => 7, 8 => 8, 9 => 9,
-    10 => 10, 'Jack' => 10, 'Queen' => 10, 'King' => 10,
-    'Ace' => 11
-  }
-
   attr_reader :face_value, :suit, :numeric_value
 
   def initialize(face_value, suit, visibility: 'face down')
     @face_value = face_value
     @suit = suit
     @visibility = visibility
-    @numeric_value = NUMERIC_VALUES[face_value]
+    @numeric_value = value_of(face_value)
   end
 
   def flip!
@@ -260,13 +256,22 @@ class Card
   def to_s
     "#{face_value} of #{suit}"
   end
+
+  private
+
+  def value_of(face_value)
+    if face_value.is_a?(Integer)
+      face_value
+    else
+      return 11 if face_value == 'Ace'
+      10
+    end
+  end
 end
 
 ### Orchestration Engine
 
 class Game
-  attr_reader :player, :dealer, :deck
-
   def initialize
     clear
     display_opening_message
@@ -290,6 +295,8 @@ class Game
   private
 
   include Displayable
+
+  attr_reader :player, :dealer, :deck
 
   def offer_instructions
     response = nil
@@ -318,8 +325,10 @@ class Game
     deal_starting_hands!
     display_known_info
     player_turn
-    sleep 2
-    dealer_turn unless player.busted?
+    unless player.busted?
+      announce_dealer_turn
+      dealer_turn
+    end
     resolve_round
   end
 
@@ -345,12 +354,10 @@ class Game
   end
 
   def dealer_turn
-    puts "Dealer's turn!"
-
     loop do
       dealer.hits_or_stays
       if dealer.hit?
-        puts "Dealer hits!"
+        puts "#{dealer.name} hits!"
         deck.deal(dealer)
         display_visible_dealer_cards
       end
@@ -360,6 +367,7 @@ class Game
   end
 
   def resolve_round
+    sleep 1
     puts '========================'
     reveal_hidden_dealer_card_and_total
     puts '------------------------'
@@ -367,16 +375,23 @@ class Game
   end
 
   def reveal_hidden_dealer_card_and_total
+    reveal_hidden_dealer_card
+    sleep 1
+    puts "#{dealer.name}'s total was: #{dealer.total}!"
+    puts "#{dealer.name} busted!" if dealer.busted?
+    sleep 1
+  end
+
+  def reveal_hidden_dealer_card
     last_dealer_card = dealer.hand.select(&:face_down?).first
     last_dealer_card.flip!
-    puts "The dealer's face down card was: #{last_dealer_card}!"
-    puts "Dealer's total was: #{dealer.total}!"
+    print "#{dealer.name}'s face down card was: "
+    sleep 2
+    puts "the #{last_dealer_card}!"
   end
 
   def determine_round_outcome
-    if double_busted?
-      :both_busted
-    elsif player_won?
+    if player_won?
       :player_wins
     elsif dealer_won?
       :dealer_wins
@@ -391,10 +406,6 @@ class Game
 
   def dealer_won?
     !dealer.busted? && (player.busted? || dealer.total > player.total)
-  end
-
-  def double_busted?
-    player.busted? && dealer.busted?
   end
 
   def play_again?
