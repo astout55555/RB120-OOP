@@ -57,12 +57,12 @@ module Displayable
   def display_full_instructions_part_two
     full_instructions_part_two = <<~FULL_TWO
       Name o' the game is Twenty-one cuz ya wanna git yer total as close to
-      twenty-one as ya can, but no more! You go over and you "bust", and the
-      best you can hope for then is a tie cuz I might just bust meself. But
-      if nobody busts, then whoever had the higher total wins. Each card is
-      worth what it says on the face, 'cept the face cards are each worth ten.
-      Only special card is an Ace, cuz that's worth eleven, but drops down to
-      only one if being a big eleven would bust ye. Nice to have one in hand.
+      twenty-one as ya can, but no more! You go over and you "bust", in which
+      case I win. Or if I bust on my turn, then you win. If nobody busts, then
+      whoever had the higher total wins. Each card is worth what it says on the
+      face, 'cept the face cards are each worth ten. Only special card is an
+      Ace, cuz that's worth eleven, but drops down to only one if being a big
+      eleven would bust ye. Nice to have one in hand since it won't hurt none.
     FULL_TWO
 
     puts full_instructions_part_two

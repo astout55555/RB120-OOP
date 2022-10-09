@@ -112,16 +112,31 @@
 # end
 
 ### FE: find a simpler solution that uses an Array, and the #push and #shift methods, without monkey-patching the Array class
+## I couldn't figure it out, but I found this elegant solution recently posted by a LS student:
 
 class CircularQueue
-  def initialize(size)
+  def initialize(max_size)
+    @max_size = max_size
+    @queue = []
   end
 
-  def enqueue(object)
+  def enqueue(element)
+    case queue.size
+    when max_size # essentially, when queue is at max size, pushing something in also removes the oldest (first) element
+      queue.shift
+      queue.push(element)
+    else 
+      queue.push(element) # counter-intuitively, the queue can be under its max size, and if there is room (empty slots), then we simply push a new element in
+    end
   end
 
   def dequeue
+    queue.shift # when removing an element, simply remove the oldest one, and there's no need to fill to max with nil values because the queue can be under the max size
   end
+
+  private
+
+  attr_reader :max_size, :queue
 end
 
 ### test cases below again:
@@ -144,7 +159,6 @@ puts queue.dequeue == 5
 puts queue.dequeue == 6 
 puts queue.dequeue == 7
 puts queue.dequeue == nil
-puts 'time for 4 spots'
 queue = CircularQueue.new(4)
 puts queue.dequeue == nil
 
